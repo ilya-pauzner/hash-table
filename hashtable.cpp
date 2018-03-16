@@ -10,28 +10,28 @@ public:
     typedef typename std::pair<const KeyType, ValueType> Record;
     typedef typename std::vector<std::list<Record> > Table;
 
-    class iterator {
-        typedef typename std::list<Record>::iterator List_Iter;
+    class ListIter {
+        typedef typename std::list<Record>::ListIter List_Iter;
     private:
         size_t row;
         List_Iter li;
         HashMap *ref;
     public:
-        iterator(size_t r = 0, List_Iter it = List_Iter(), HashMap *re = nullptr)
+        ListIter(size_t r = 0, List_Iter it = List_Iter(), HashMap *re = nullptr)
                 : row(r), li(it), ref(re) {
         }
 
-        bool operator==(iterator other) {
+        bool operator==(ListIter other) {
             return (row == other.row) && (li == other.li);
         }
 
-        bool operator!=(iterator other) { return !(*this == other); }
+        bool operator!=(ListIter other) { return !(*this == other); }
 
         Record &operator*() { return *li; }
 
         List_Iter operator->() { return li; }
 
-        iterator operator++() {
+        ListIter operator++() {
             ++li;
             if (li == ref->table[row].end() and row + 1 != ref->table.size()) {
                 ++row;
@@ -48,35 +48,35 @@ public:
             return *this;
         }
 
-        iterator operator++(int) {
-            iterator tmp = *this;
+        ListIter operator++(int) {
+            ListIter tmp = *this;
             ++(*this);
             return tmp;
         }
     };
 
-    class const_iterator {
-        typedef typename std::list<Record>::const_iterator Const_List_Iter;
+    class ConstListIter {
+        typedef typename std::list<Record>::ConstListIter Const_List_Iter;
     private:
         size_t row;
         Const_List_Iter li;
         const HashMap *ref;
     public:
-        const_iterator(size_t r = 0, Const_List_Iter it = Const_List_Iter(), const HashMap *re = nullptr)
+        ConstListIter(size_t r = 0, Const_List_Iter it = Const_List_Iter(), const HashMap *re = nullptr)
                 : row(r), li(it), ref(re) {
         }
 
-        bool operator==(const_iterator other) {
+        bool operator==(ConstListIter other) {
             return (row == other.row) && (li == other.li);
         }
 
-        bool operator!=(const_iterator other) { return !(*this == other); }
+        bool operator!=(ConstListIter other) { return !(*this == other); }
 
         const Record &operator*() { return *li; }
 
         Const_List_Iter operator->() { return li; }
 
-        const_iterator operator++() {
+        ConstListIter operator++() {
             ++li;
             if (li == ref->table[row].end() and row + 1 != ref->table.size()) {
                 ++row;
@@ -93,27 +93,33 @@ public:
             return *this;
         }
 
-        const_iterator operator++(int) {
-            const_iterator tmp = *this;
+        ConstListIter operator++(int) {
+            ConstListIter tmp = *this;
             ++(*this);
             return tmp;
         }
     };
 
 private:
-    Table table;
-    size_t Size;
+	const int initial_size = 128;
+	const int multiply_factor = 4;
+	const double max_load_factor = 0.5;
+    
+    size_t size_ = 0;
+	size_t maybe_begin = initial_size - 1;
+	
+	Table table;
     Hash hasher;
-    int maybe_begin = 127;
+
     //
 
-    void rehash() {
-        if (Size < 128 or table.size() < 128) {
+    void _rehash() {
+        if (size_ < initial_size or table.size() < initial_size) {
             return;
         }
         size_t new_size = 0;
-        if (0.5 * table.size() <= Size) {
-            new_size = 4 * Size;
+        if (max_load_factor * table.size() <= size_) {
+            new_size = multiply_factor * size_;
         } else {
             return;
         }
@@ -131,9 +137,9 @@ private:
         }
     }
 
-    void _insert(Record kv, Table &t) {
-        int pos = hasher(kv.first) & (t.size() - 1);
-        int times = 0;
+    void _insert(const Record& kv, Table &t) {
+        size_t pos = hasher(kv.first) & (t.size() - 1);
+        size_t times = 0;
         for (auto elem : t[pos]) {
             if (elem.first == kv.first) {
                 ++times;
@@ -142,13 +148,13 @@ private:
         }
         if (times == 0) {
             t[pos].push_front(kv);
-            ++Size;
+            ++size_;
             maybe_begin = std::min(maybe_begin, pos);
         }
     }
 
-    void _erase(KeyType k, Table &t) {
-        int pos = hasher(k) & (t.size() - 1);
+    void _erase(const KeyType& k, Table &t) {
+        size_t pos = hasher(k) & (t.size() - 1);
         if (t[pos].empty()) {
             return;
         }
@@ -162,12 +168,12 @@ private:
 
         if (last->first == k) {
             t[pos].erase(last);
-            --Size;
+            --size_;
         }
     }
 
-    iterator _find(KeyType k, Table &t) {
-        int pos = hasher(k) & (t.size() - 1);
+    ListIter _find(const KeyType& k, Table &t) {
+        size_t pos = hasher(k) & (t.size() - 1);
         if (t[pos].empty()) {
             return end();
         }
@@ -179,13 +185,13 @@ private:
             }
         }
         if (last->first == k) {
-            return iterator(pos, last, this);
+            return ListIter(pos, last, this);
         }
         return end();
     }
 
-    const_iterator _find(KeyType k, const Table &t) const {
-        int pos = hasher(k) & (t.size() - 1);
+    ConstListIter _find(const KeyType& k, const Table &t) const {
+        size_t pos = hasher(k) & (t.size() - 1);
         if (t[pos].empty()) {
             return end();
         }
@@ -197,7 +203,7 @@ private:
             }
         }
         if (last->first == k) {
-            return const_iterator(pos, last, this);
+            return ConstListIter(pos, last, this);
         }
         return end();
     }
@@ -206,21 +212,21 @@ public:
 
     HashMap &operator=(const HashMap &other) {
         table = Table(other.table);
-        Size = other.Size;
+        size_ = other.size_;
         hasher = other.hasher;
         return *this;
     }
 
-    explicit HashMap(const Hash &h) : table(Table(128)), Size(0), hasher(h) {
+    explicit HashMap(const Hash &h) : table(Table(initial_size)), size_(0), hasher(h) {
     }
 
     explicit HashMap() {
-        table = Table(128);
-        Size = 0;
+        table = Table(initial_size);
+        size_ = 0;
     }
 
-    template<typename Iterator>
-    HashMap(Iterator first, Iterator last) {
+    template<typename ListIter>
+    HashMap(ListIter first, ListIter last) {
         *this = HashMap();
         while (first != last) {
             _insert(*first, table);
@@ -228,8 +234,8 @@ public:
         }
     }
 
-    template<typename Iterator>
-    HashMap(Iterator first, Iterator last, Hash h) {
+    template<typename ListIter>
+    HashMap(ListIter first, ListIter last, Hash h) {
         *this = HashMap();
         while (first != last) {
             _insert(*first, table);
@@ -247,39 +253,40 @@ public:
     }
 
     size_t size() const {
-        return Size;
+        return size_;
     }
 
     bool empty() const {
-        return Size == 0;
+        return size_ == 0;
     }
 
     Hash hash_function() const {
         return hasher;
     }
 
-    void insert(Record kv) {
+    void insert(const Record& kv) {
         _insert(kv, table);
-        rehash();
+        _rehash();
     }
 
-    void erase(KeyType k) {
+    void erase(const KeyType& k) {
         _erase(k, table);
-        rehash();
+        _rehash();
     }
 
-    iterator begin() {
+    ListIter begin() {
         size_t r = maybe_begin;
         while (r < table.size() and table[r].empty()) {
             ++r;
         }
+		maybe_begin = r;
         if (r == table.size()) {
             return end();
         }
-        return iterator(r, table[r].begin(), this);
+        return ListIter(r, table[r].begin(), this);
     }
 
-    const_iterator begin() const {
+    ConstListIter begin() const {
         int r = maybe_begin;
         while (r < table.size() and table[r].empty()) {
             ++r;
@@ -287,33 +294,33 @@ public:
         if (r == table.size()) {
             return end();
         }
-        return const_iterator(r, table[r].begin(), this);
+        return ConstListIter(r, table[r].begin(), this);
     }
 
-    iterator end() {
-        return iterator(table.size() - 1, table.back().end(), this);
+    ListIter end() {
+        return ListIter(table.size() - 1, table.back().end(), this);
     }
 
-    const_iterator end() const {
-        return const_iterator(table.size() - 1, table.back().end(), this);
+    ConstListIter end() const {
+        return ConstListIter(table.size() - 1, table.back().end(), this);
     }
 
-    iterator find(KeyType k) {
+    ListIter find(const KeyType& k) {
         return _find(k, table);
     }
 
-    const_iterator find(KeyType k) const {
+    ConstListIter find(const KeyType& k) const {
         return _find(k, table);
     }
 
-    ValueType &operator[](KeyType k) {
+    ValueType &operator[](const KeyType& k) {
         if (find(k) == end()) {
             insert({k, ValueType()});
         }
         return (*find(k)).second;
     }
 
-    const ValueType &at(KeyType k) const {
+    const ValueType &at(const KeyType& k) const {
         if (find(k) == end()) {
             throw std::out_of_range("No such key!");
         }
