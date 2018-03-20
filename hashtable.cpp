@@ -27,7 +27,7 @@ public:
 
         bool operator!=(iterator other) { return !(*this == other); }
 
-        Record &operator*() { return *li; }
+        Record& operator*() { return *li; }
 
         list_iterator operator->() { return li; }
 
@@ -72,7 +72,7 @@ public:
 
         bool operator!=(const_iterator other) { return !(*this == other); }
 
-        const Record &operator*() { return *li; }
+        const Record& operator*() { return *li; }
 
         list_const_iterator operator->() { return li; }
 
@@ -137,7 +137,7 @@ private:
         }
     }
 
-    void _insert(const Record &kv, Table &t) {
+    void _insert(const Record& kv, Table& t) {
         size_t pos = hasher(kv.first) & (t.size() - 1);
         size_t times = 0;
         for (auto elem : t[pos]) {
@@ -153,7 +153,7 @@ private:
         }
     }
 
-    void _erase(const KeyType &k, Table &t) {
+    void _erase(const KeyType& k, Table& t) {
         size_t pos = hasher(k) & (t.size() - 1);
         if (t[pos].empty()) {
             return;
@@ -172,7 +172,7 @@ private:
         }
     }
 
-    iterator _find(const KeyType &k, Table &t) {
+    iterator _find(const KeyType& k, Table& t) {
         size_t pos = hasher(k) & (t.size() - 1);
         if (t[pos].empty()) {
             return end();
@@ -190,7 +190,7 @@ private:
         return end();
     }
 
-    const_iterator _find(const KeyType &k, const Table &t) const {
+    const_iterator _find(const KeyType& k, const Table& t) const {
         size_t pos = hasher(k) & (t.size() - 1);
         if (t[pos].empty()) {
             return end();
@@ -210,14 +210,14 @@ private:
 
 public:
 
-    HashMap &operator=(const HashMap &other) {
+    HashMap& operator=(const HashMap& other) {
         table = Table(other.table);
         size_ = other.size_;
         hasher = other.hasher;
         return *this;
     }
 
-    explicit HashMap(const Hash &h) : table(Table(initial_size)), size_(0), hasher(h) {
+    explicit HashMap(const Hash& h) : table(Table(initial_size)), size_(0), hasher(h) {
     }
 
     explicit HashMap() {
@@ -264,12 +264,12 @@ public:
         return hasher;
     }
 
-    void insert(const Record &kv) {
+    void insert(const Record& kv) {
         _insert(kv, table);
         _rehash();
     }
 
-    void erase(const KeyType &k) {
+    void erase(const KeyType& k) {
         _erase(k, table);
         _rehash();
     }
@@ -305,22 +305,22 @@ public:
         return const_iterator(table.size() - 1, table.back().end(), this);
     }
 
-    iterator find(const KeyType &k) {
+    iterator find(const KeyType& k) {
         return _find(k, table);
     }
 
-    const_iterator find(const KeyType &k) const {
+    const_iterator find(const KeyType& k) const {
         return _find(k, table);
     }
 
-    ValueType &operator[](const KeyType &k) {
+    ValueType& operator[](const KeyType& k) {
         if (find(k) == end()) {
             insert({k, ValueType()});
         }
         return (*find(k)).second;
     }
 
-    const ValueType &at(const KeyType &k) const {
+    const ValueType& at(const KeyType& k) const {
         if (find(k) == end()) {
             throw std::out_of_range("No such key!");
         }
